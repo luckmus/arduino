@@ -413,7 +413,16 @@ class LCD{
   }
   
   void setNextSelectFeedId(int btn){
-    int i = this->selectedFeedItem+1;
+   int koef;
+   if(btn == btnUP)    {
+     koef = 1;
+   }else if (btn == btnDOWN){
+     koef = -1;
+   }else{
+     return; 
+   }
+    
+    int i = this->selectedFeedItem+(1*koef);
     if (i<0){
       i = FEED_COUNT-1;
     }
