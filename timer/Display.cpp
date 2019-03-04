@@ -20,3 +20,7 @@ void Display::show(Timer *timer){
     }
 };
 
+void Display::logger(){
+  
+}
+

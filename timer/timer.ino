@@ -45,8 +45,13 @@ int readInput(){
 }
 
 void loop() {
+  readInput();
   timer->applyInput(1);
   dsply->show(timer);
+
+  timer->logger();
+  dsply->logger();
    delay(1000);
+   
 
 }

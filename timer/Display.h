@@ -4,5 +4,6 @@
 class Display{
 public:
   void show(Timer *timer);
+  void logger();
 };
 
