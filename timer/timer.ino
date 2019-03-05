@@ -6,7 +6,7 @@
 //#include "TimerCls.h"
 #include "Display.h"
 
-int RECV_PIN = 0;
+int RECV_PIN = 7;
 
 RTC_DS1307 rtc;
 DateTime now;
@@ -35,23 +35,26 @@ void setup() {
 
 }
 
-int readInput(){
+void readInput(){
   if (irrecv.decode(&results)) {
     long val=results.value;
     irrecv.resume();
     Serial.println(val, HEX);
+    val=val&0xFFFF;
+    Serial.println(val, HEX);
+    timer->applyInput(val);
   }
   
 }
 
 void loop() {
   readInput();
-  timer->applyInput(1);
+ 
   dsply->show(timer);
 
   timer->logger();
   dsply->logger();
-   delay(1000);
+   delay(300);
    
 
 }

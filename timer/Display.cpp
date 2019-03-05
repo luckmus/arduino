@@ -17,6 +17,7 @@ void Display::show(Timer *timer){
         matrix.fillScreen(LOW);
         matrix.drawChar(0, 0, str[i], HIGH, LOW, 1);
         matrix.write();
+        delay(200);
     }
 };
 
