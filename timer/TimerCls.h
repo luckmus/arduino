@@ -8,6 +8,12 @@ enum TIMER_MODE{
  m_SET_WORKOUT,
 /*настройка тренировки осуществлена, ожидание запуска*/
  m_WORKOUT_WAIT_FOR_START, 
+/*отстчет 3-х секунд перед стартом*/
+ m_START_COUNT_DOWN,
+/*тренировка идет*/
+ m_WORKOUT,
+
+ m_WORKOUT_FINISH
 };
 
 enum WORKOUT_TYPE{
@@ -18,15 +24,45 @@ enum WORKOUT_TYPE{
  WT_TABATA
 };
 
+enum TIME_EDIT_MODE{
+ EM_MINUTES,
+ EM_SECONDS
+};
+
+enum TABATA_EDIT_MODE{
+ T_WORK_TIME,
+ T_REST_TIME,
+ T_ROUNDS
+};
+
+enum RUN_TIMER_MODE{
+ TIMER_MODE_UP,
+ TIMER_MODE_DOWN
+};
+
 
 /*выбор типа тренировок*/
 #define SELECT_WORKOUT 0x42BD
 #define OK_BUTTON 0x02FD
 #define BTN_UP 0x629D
 #define BTN_DOWN 0xA857
+#define BTN_RIGHT 0xC23D
+#define BTN_LEFT 0x22DD
+#define BTN_RESET 0x52AD
 #define WORKOUTS_SIZE 4
 #define MIN_EMOM 1
 #define MAX_EMOM 99
+#define DEFAULT_MINUTES 00
+#define DEFAULT_SECONDS 00
+#define MAX_WO_MINUTES  99
+#define MAX_WO_SECONDS  59
+#define DEF_TABATA_WORK_TIME  20
+#define DEF_TABATA_WAIT_TIME  10
+#define DEF_TABATA_ROUNDS  8
+#define MAX_TABATA_TIME 999
+#define MIN_TABATA_TIME 0
+#define COUNT_DOWN_TIME 6000
+#define SECOND_TIME 1000
 
 const String WO_EMOM = "EMOM";
 const String WO_AMRAP = "AMRAP";
@@ -42,11 +78,24 @@ public:
   WORKOUT_TYPE currentWT;
   int indxOfWO = 0;
   int emomRounds = MIN_EMOM;
+  TIME_EDIT_MODE timeEditMode = EM_MINUTES;
+  int edt_minutes = DEFAULT_MINUTES;
+  int edt_seconds = DEFAULT_SECONDS;
+  RUN_TIMER_MODE timerMode = TIMER_MODE_UP;
 
+  TABATA_EDIT_MODE tabataEditMode = T_WORK_TIME;
+  int tabataWorkTime = DEF_TABATA_WORK_TIME;
+  int tabataWaitTime = DEF_TABATA_WAIT_TIME;
+  int tabataRounds = DEF_TABATA_ROUNDS;
+  unsigned long startTime;
+  unsigned long workoutTime;
+  
   TIMER_MODE getMode();
+  unsigned long getTime();
   void applyInput(int input);
   String getDisplayString();
   String getSetWorkoutString();
+  String getTabataSetWorkoutString();
 
   void applayInputToClock(int input);
   void applayInputToSelectWorkOut(int input);
@@ -55,10 +104,25 @@ public:
   void applayInputToSetWorkOutAMRAP(int input);
   void applayInputToSetWorkOutAFAP(int input);
   void applayInputToSetWorkOutTABATA(int input);
+  void applayInputToWorkoutWaitForStart(int input);
+  void nextTabataSetting();
+  void checkTabataTime();
+  void checkWOTime();
   String getWorkOutName();
   String getWorkoutWaitString();
   void logger();
+  void reset();
   String stringFromTIMER_MODE(enum TIMER_MODE f);
   String stringFromWORKOUT_TYPE(enum WORKOUT_TYPE f);
+  String getStartCountdownString();
+  void startWorkout();
+  void shouldFinishWorkout();
+  void finishWorkout();
+  void startWorkoutAFAP();
+  String getWorkoutString();
+  String getAFAPTimeString();
+  String milisToTimeString(unsigned long ms);
+  void startCountdown();
   
 };
+

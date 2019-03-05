@@ -51,10 +51,10 @@ void loop() {
   readInput();
  
   dsply->show(timer);
-
+  timer->shouldFinishWorkout();
   timer->logger();
   dsply->logger();
-   delay(300);
+   delay(250);
    
 
 }
