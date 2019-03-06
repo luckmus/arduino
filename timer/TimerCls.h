@@ -89,6 +89,10 @@ public:
   int tabataRounds = DEF_TABATA_ROUNDS;
   unsigned long startTime;
   unsigned long workoutTime;
+  /**текушее состояние тренировки табата*/
+  TABATA_EDIT_MODE woTabataState;
+  /**текущий раунд табаты*/
+  int woTabataRound;
   
   TIMER_MODE getMode();
   unsigned long getTime();
@@ -119,8 +123,14 @@ public:
   void shouldFinishWorkout();
   void finishWorkout();
   void startWorkoutAFAP();
+  void startWorkoutAMRAP();
+  void startWorkoutEMOM();
+  void startWorkoutTABATA();
   String getWorkoutString();
   String getAFAPTimeString();
+  String getAMRAPTimeString();
+  String getEMOMTimeString();
+  String getTABATATimeString();
   String milisToTimeString(unsigned long ms);
   void startCountdown();
   

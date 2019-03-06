@@ -28,7 +28,7 @@ String Timer::getDisplayString() {
     case m_WORKOUT:
       return getWorkoutString();
     case m_WORKOUT_FINISH:
-    return "finish";
+      return "finish";
   }
   return "hello";
 }
@@ -37,14 +37,61 @@ String Timer::getWorkoutString() {
   switch (currentWT) {
     case WT_AFAP:
       return getAFAPTimeString();
+    case WT_AMRAP:
+      return getAMRAPTimeString();
+    case WT_EMOM:
+      return getEMOMTimeString();
+    case WT_TABATA:
+      return getTABATATimeString();
   }
   return "go!!!";
 }
+
+String Timer::getEMOMTimeString() {
+  unsigned long passedTime = getTime() - startTime;
+  unsigned long totalseconds = passedTime / SECOND_TIME;
+  int rounds = totalseconds / 60 + 1;
+  int seconds = 60 - totalseconds % 60 - 1;
+  return  ((rounds < 10) ? "R 0" : "R ") + String(rounds) + " :" + ((seconds < 10) ? "0" : "") + String(seconds);
+}
+
+String Timer::getTABATATimeString() {
+  unsigned long passedTime = getTime() - startTime;
+  int passedTimeSec = passedTime / SECOND_TIME;
+
+  switch (woTabataState) {
+    case T_WORK_TIME:
+      if (passedTimeSec >= tabataWorkTime) {
+        woTabataState = T_REST_TIME;
+        startTime = startTime + passedTime;
+        passedTimeSec = 0;
+
+      }
+      break;
+
+    case T_REST_TIME:
+      if (passedTimeSec >= tabataWaitTime) {
+        woTabataState = T_WORK_TIME;
+        startTime = startTime + passedTime;
+        passedTimeSec = 0;
+        woTabataRound++;
+      }
+      break;
+  }
+  String s = ((woTabataState == T_WORK_TIME) ? " W " : " R ");
+  return ((woTabataRound + 1 < 10) ? "C0" : "C") + String(woTabataRound + 1) + s  + ((passedTimeSec < 10) ? " :0" : " :") + String(passedTimeSec);
+}
+
 /**
    Отображение на экране состояния тренировки AFAP
 */
 String Timer::getAFAPTimeString() {
   unsigned long passedTime = getTime() - startTime;
+  return milisToTimeString(passedTime);
+}
+
+String Timer::getAMRAPTimeString() {
+  unsigned long passedTime = workoutTime - getTime();
   return milisToTimeString(passedTime);
 }
 
@@ -54,45 +101,94 @@ void Timer::startWorkout() {
     case WT_AFAP:
       startWorkoutAFAP();
       break;
+    case WT_AMRAP:
+      startWorkoutAMRAP();
+      break;
+    case WT_EMOM:
+      startWorkoutEMOM();
+      break;
+    case WT_TABATA:
+      startWorkoutTABATA();
+      break;
   }
 }
-void Timer::finishWorkout(){
+void Timer::finishWorkout() {
   mode = m_WORKOUT_FINISH;
+  Serial.println("finishWorkout");
 }
 
-void Timer::shouldFinishWorkout(){
-  if (getMode() != m_WORKOUT){
+void Timer::shouldFinishWorkout() {
+  if (getMode() != m_WORKOUT) {
     return;
   }
-  
-  switch(currentWT){
+
+  switch (currentWT) {
     case WT_AFAP:
-    Serial.print("  workoutTime: "); Serial.println(workoutTime);
-    Serial.print("  startTime: "); Serial.println(startTime);
-    Serial.print("  Time: "); Serial.println(getTime());
-      if (workoutTime+startTime>=getTime()){
+      Serial.print("  workoutTime: "); Serial.println(workoutTime);
+      Serial.print("  startTime: "); Serial.println(startTime);
+      Serial.print("  Time: "); Serial.println(getTime());
+      if (workoutTime + startTime <= getTime()) {
+        finishWorkout();
+        //delay(5000);
+      }
+      break;
+    case WT_AMRAP:
+      if (workoutTime <= getTime()) {
+        finishWorkout();
+        //delay(5000);
+      }
+      break;
+    case WT_EMOM:
+      if (workoutTime + startTime <= getTime()) {
+        finishWorkout();
+        //delay(5000);
+      }
+      break;
+    case WT_TABATA:
+      if (woTabataRound >= tabataRounds) {
         finishWorkout();
       }
+      break;
+
   }
+}
+
+void Timer::startWorkoutTABATA() {
+  timerMode = TIMER_MODE_DOWN;
+  startTime = getTime();
+  workoutTime = (tabataWorkTime + tabataWaitTime) * SECOND_TIME * (float)tabataRounds;
+  woTabataState = T_WORK_TIME;
+  woTabataRound = 0;
+}
+
+void Timer::startWorkoutEMOM() {
+  timerMode = TIMER_MODE_DOWN;
+  startTime = getTime();
+  workoutTime = emomRounds * (float)60 * SECOND_TIME;
 }
 
 void Timer::startWorkoutAFAP() {
   timerMode = TIMER_MODE_UP;
   startTime = getTime();
-  workoutTime =  edt_minutes * 60 * SECOND_TIME/* + edt_seconds * SECOND_TIME * SECOND_TIME*/;
+  workoutTime =  edt_minutes * (float)60 * SECOND_TIME + (float)edt_seconds * SECOND_TIME;
 
-  Serial.print("  edt_minutes: "); Serial.println(edt_minutes);
-  Serial.print("  workoutTime: "); Serial.println(workoutTime);
-  Serial.print("  workoutTime calc: "); Serial.println(edt_minutes * SECOND_TIME*60);
-    Serial.print("  startTime: "); Serial.println(startTime);
-  delay(5000);
+  //Serial.print("  workoutTime: "); Serial.println(workoutTime);
+  //Serial.print("  startTime: "); Serial.println(startTime);
+
 }
 
 String Timer::milisToTimeString(unsigned long ms) {
-  unsigned long totalseconds = ms/SECOND_TIME;
-  int minutes = totalseconds/60;
-  int seconds = totalseconds%60;
-  return  ((minutes < 10) ? "0" : "") + String(minutes)+ ":"+((seconds < 10) ? "0" : "") + String(seconds);
+  unsigned long totalseconds = ms / SECOND_TIME;
+  int minutes = totalseconds / 60;
+  int seconds = totalseconds % 60;
+  return  ((minutes < 10) ? "0" : "") + String(minutes) + ":" + ((seconds < 10) ? "0" : "") + String(seconds);
+}
+
+void Timer::startWorkoutAMRAP() {
+  timerMode = TIMER_MODE_DOWN;
+  startTime = getTime();
+  workoutTime =  edt_minutes * (float)60 * SECOND_TIME + (float)edt_seconds * SECOND_TIME;
+  workoutTime += startTime; //время окончания тренировки
 }
 
 String Timer::getStartCountdownString() {
@@ -114,7 +210,7 @@ String Timer::getWorkoutWaitString() {
     case WT_AMRAP:
       return getSetWorkoutString();
     case WT_TABATA:
-      return ((tabataWaitTime < 10) ? "0" : "") + String(tabataWaitTime);
+      return ((tabataWorkTime < 10) ? ":0" : ":") + String(tabataWorkTime);
 
   }
 }
@@ -258,8 +354,13 @@ void Timer::applayInputToSetWorkOutEMOM(int input) {
       Serial.println(input, HEX);
       break;
   }
-  if ((emomRounds < MIN_EMOM) || (emomRounds > MAX_EMOM)) {
-    emomRounds = 1;
+
+  if ((emomRounds < MIN_EMOM)) {
+    emomRounds = MAX_EMOM;
+  }
+  
+  if ((emomRounds > MAX_EMOM)) {
+    emomRounds = MIN_EMOM;
   }
 }
 void Timer::applayInputToSetWorkOutAMRAP(int input) {
@@ -441,7 +542,7 @@ void Timer::logger() {
   Serial.println("  currentWT: " + stringFromWORKOUT_TYPE(currentWT));
   //Serial.print("  indxOfWO: "); Serial.println(indxOfWO);
   //Serial.print("  emomRounds: "); Serial.println(emomRounds);
-  Serial.print("  time: "); Serial.println(getTime());
+  //Serial.print("  time: "); Serial.println(getTime());
   Serial.println("  displayString: " + getDisplayString());
   Serial.println("___________________");
 
@@ -450,7 +551,7 @@ void Timer::logger() {
 
 String Timer::stringFromTIMER_MODE(enum TIMER_MODE f)
 {
-  static const String strings[] = { "m_CLOCK", "m_SELECT_WORKOUT", "m_SET_WORKOUT", "m_WORKOUT_WAIT_FOR_START", "m_START_COUNT_DOWN", "m_WORKOUT"  };
+  static const String strings[] = { "m_CLOCK", "m_SELECT_WORKOUT", "m_SET_WORKOUT", "m_WORKOUT_WAIT_FOR_START", "m_START_COUNT_DOWN", "m_WORKOUT", "m_WORKOUT_FINISH"  };
 
   return strings[f];
 }

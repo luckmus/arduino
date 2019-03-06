@@ -54,7 +54,7 @@ void loop() {
   timer->shouldFinishWorkout();
   timer->logger();
   dsply->logger();
-   delay(250);
+   delay(50);
    
 
 }
