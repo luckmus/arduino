@@ -29,8 +29,16 @@ String Timer::getDisplayString() {
       return getWorkoutString();
     case m_WORKOUT_FINISH:
       return "finish";
+    case m_SET_CLOCK:
+      return getSetTimeString();
   }
-  return "hello";
+
+  now = rtc.now();
+  return ((now.hour() < 10) ? "0" : "") + String(now.hour()) + ":" + ((now.minute() < 10) ? "0" : "") + String(now.minute());
+}
+
+String Timer::getSetTimeString() {
+  return ((setHourVal < 10) ? "=0" : "=") + String(setHourVal) + ((setMinuteVal < 10) ? " :0" : " :") + String(setMinuteVal);
 }
 
 String Timer::getWorkoutString() {
@@ -287,6 +295,9 @@ void  Timer::applyInput(int input) {
     case m_CLOCK:
       applayInputToClock(input);
       break;
+    case m_SET_CLOCK:
+      applayInputToSetClock(input);
+      break;
 
     case m_SELECT_WORKOUT:
       applayInputToSelectWorkOut(input);
@@ -358,7 +369,7 @@ void Timer::applayInputToSetWorkOutEMOM(int input) {
   if ((emomRounds < MIN_EMOM)) {
     emomRounds = MAX_EMOM;
   }
-  
+
   if ((emomRounds > MAX_EMOM)) {
     emomRounds = MIN_EMOM;
   }
@@ -495,10 +506,53 @@ void Timer::applayInputToClock(int input) {
       mode = m_SELECT_WORKOUT;
       applayInputToSelectWorkOut(input);
       break;
+    case OK_BUTTON:
+      mode = m_SET_CLOCK;
+
+      now = rtc.now();
+      setMinuteVal = now.minute();
+      setHourVal = now.hour();
+
+      timeEditMode = EM_HOURS;
+      //applayInputToSetClock(input);
+      break;
     default:
       Serial.print("unknow input ");
       Serial.println(input, HEX);
       break;
+  }
+}
+
+void Timer::applayInputToSetClock(int input) {
+  switch (input) {
+    case BTN_UP:
+      if (timeEditMode == EM_HOURS) setHourVal++; else setMinuteVal++;
+      break;
+    case BTN_DOWN:
+      if (timeEditMode == EM_HOURS) setHourVal--; else setMinuteVal--;
+      break;
+
+    case BTN_RIGHT:
+    case BTN_LEFT:
+      if (timeEditMode == EM_HOURS) timeEditMode = EM_MINUTES; else timeEditMode = EM_HOURS;
+      break;
+    case OK_BUTTON:
+      now = rtc.now();
+      rtc.adjust(DateTime(now.year(), now.month(), now.day(),setHourVal,  setMinuteVal, 0));
+      mode = m_CLOCK;
+      break;
+  }
+  if (setHourVal>MAX_WO_SECONDS){
+    setHourVal = 0;
+  }
+  if (setHourVal<0){
+    setHourVal = MAX_WO_SECONDS;
+  }
+  if (setMinuteVal>MAX_WO_SECONDS){
+    setMinuteVal = 0;
+  }
+  if (setMinuteVal<0){
+    setMinuteVal = MAX_WO_SECONDS;
   }
 }
 
@@ -551,7 +605,7 @@ void Timer::logger() {
 
 String Timer::stringFromTIMER_MODE(enum TIMER_MODE f)
 {
-  static const String strings[] = { "m_CLOCK", "m_SELECT_WORKOUT", "m_SET_WORKOUT", "m_WORKOUT_WAIT_FOR_START", "m_START_COUNT_DOWN", "m_WORKOUT", "m_WORKOUT_FINISH"  };
+  static const String strings[] = { "m_CLOCK","m_SET_CLOCK", "m_SELECT_WORKOUT", "m_SET_WORKOUT", "m_WORKOUT_WAIT_FOR_START", "m_START_COUNT_DOWN", "m_WORKOUT", "m_WORKOUT_FINISH"  };
 
   return strings[f];
 }

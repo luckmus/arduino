@@ -2,6 +2,7 @@
 
 enum TIMER_MODE{
  m_CLOCK,
+ m_SET_CLOCK,
  /*Выбор тренировки*/
  m_SELECT_WORKOUT, 
  /*Настройки выбранной тренировки*/
@@ -25,6 +26,7 @@ enum WORKOUT_TYPE{
 };
 
 enum TIME_EDIT_MODE{
+ EM_HOURS,
  EM_MINUTES,
  EM_SECONDS
 };
@@ -73,6 +75,7 @@ const String WO_TABATA = "TABATA";
 class Timer{
 public:  
   RTC_DS1307 rtc;
+  DateTime now;
   TIMER_MODE mode = m_CLOCK;
   //TIMER_MODE mode = m_SELECT_WORKOUT;
   WORKOUT_TYPE currentWT;
@@ -87,6 +90,8 @@ public:
   int tabataWorkTime = DEF_TABATA_WORK_TIME;
   int tabataWaitTime = DEF_TABATA_WAIT_TIME;
   int tabataRounds = DEF_TABATA_ROUNDS;
+  byte setMinuteVal;
+  byte setHourVal;
   unsigned long startTime;
   unsigned long workoutTime;
   /**текушее состояние тренировки табата*/
@@ -102,6 +107,7 @@ public:
   String getTabataSetWorkoutString();
 
   void applayInputToClock(int input);
+  void applayInputToSetClock(int input);
   void applayInputToSelectWorkOut(int input);
   void applayInputToSetWorkOut(int input);
   void applayInputToSetWorkOutEMOM(int input);
@@ -131,6 +137,7 @@ public:
   String getAMRAPTimeString();
   String getEMOMTimeString();
   String getTABATATimeString();
+  String getSetTimeString();
   String milisToTimeString(unsigned long ms);
   void startCountdown();
   

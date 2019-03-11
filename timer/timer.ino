@@ -6,7 +6,7 @@
 //#include "TimerCls.h"
 #include "Display.h"
 
-int RECV_PIN = 7;
+int RECV_PIN = 2;
 
 RTC_DS1307 rtc;
 DateTime now;
@@ -28,7 +28,7 @@ void setup() {
   if (! rtc.isrunning()) {
     Serial.println("RTC is NOT running!");
     // following line sets the RTC to the date & time this sketch was compiled
-    rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
+    //rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
   }
   irrecv.enableIRIn();
   
@@ -54,6 +54,7 @@ void loop() {
   timer->shouldFinishWorkout();
   timer->logger();
   dsply->logger();
+    
    delay(50);
    
 
