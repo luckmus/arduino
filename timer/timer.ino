@@ -8,7 +8,7 @@
 
 int RECV_PIN = 2;
 
-RTC_DS1307 rtc;
+//RTC_DS1307 rtc;
 DateTime now;
 IRrecv irrecv(RECV_PIN);
 decode_results results;
@@ -23,9 +23,9 @@ void setup() {
 #else
   Wire1.begin(); // Shield I2C pins connect to alt I2C bus on Arduino Due
 #endif
-  rtc.begin();
+  timer->rtc.begin();
 
-  if (! rtc.isrunning()) {
+  if (! timer->rtc.isrunning()) {
     Serial.println("RTC is NOT running!");
     // following line sets the RTC to the date & time this sketch was compiled
     //rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
@@ -55,7 +55,7 @@ void loop() {
   timer->logger();
   dsply->logger();
     
-   delay(50);
+   delay(150);
    
 
 }
