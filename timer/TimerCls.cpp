@@ -32,9 +32,12 @@ String Timer::getDisplayString() {
     case m_SET_CLOCK:
       return getSetTimeString();
   }
-
-  now = rtc.now();
-  return ((now.hour() < 10) ? "0" : "") + String(now.hour()) + ":" + ((now.minute() < 10) ? "0" : "") + String(now.minute());
+  if (! rtc.isrunning()) {
+    return "unavai";
+  }else{
+    now = rtc.now();
+    return ((now.hour() < 10) ? "0" : "") + String(now.hour()) + ":" + ((now.minute() < 10) ? "0" : "") + String(now.minute())/*+ ":" + ((now.second() < 10) ? "0" : "") + String(now.second())*/;
+  }
 }
 
 String Timer::getSetTimeString() {
