@@ -66,6 +66,8 @@ enum RUN_TIMER_MODE{
 #define COUNT_DOWN_TIME 6000
 #define SECOND_TIME 1000
 
+#define BUZZER_PIN  3
+
 const String WO_EMOM = "EMOM";
 const String WO_AMRAP = "AMRAP";
 const String WO_AFAP = "AFAP";
@@ -84,6 +86,8 @@ public:
   TIME_EDIT_MODE timeEditMode = EM_MINUTES;
   int edt_minutes = DEFAULT_MINUTES;
   int edt_seconds = DEFAULT_SECONDS;
+  int bPin = BUZZER_PIN;
+  int stopToneTime;
   RUN_TIMER_MODE timerMode = TIMER_MODE_UP;
 
   TABATA_EDIT_MODE tabataEditMode = T_WORK_TIME;
@@ -98,6 +102,7 @@ public:
   TABATA_EDIT_MODE woTabataState;
   /**текущий раунд табаты*/
   int woTabataRound;
+  byte lastBeepFor = -1;
   
   TIMER_MODE getMode();
   unsigned long getTime();
@@ -140,6 +145,10 @@ public:
   String getSetTimeString();
   String milisToTimeString(unsigned long ms);
   void startCountdown();
+  void startFinishTone();
+  void countTone();
+  void tTone(int ms);
+  void stopTone();
   
 };
 

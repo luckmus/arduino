@@ -34,7 +34,7 @@ String Timer::getDisplayString() {
   }
   if (! rtc.isrunning()) {
     return "unavai";
-  }else{
+  } else {
     now = rtc.now();
     return ((now.hour() < 10) ? "0" : "") + String(now.hour()) + ":" + ((now.minute() < 10) ? "0" : "") + String(now.minute())/*+ ":" + ((now.second() < 10) ? "0" : "") + String(now.second())*/;
   }
@@ -63,6 +63,10 @@ String Timer::getEMOMTimeString() {
   unsigned long totalseconds = passedTime / SECOND_TIME;
   int rounds = totalseconds / 60 + 1;
   int seconds = 60 - totalseconds % 60 - 1;
+  if ((seconds==59) && (lastBeepFor!=seconds) && (rounds>1)){
+    lastBeepFor = seconds;
+    tTone(500);
+  }
   return  ((rounds < 10) ? "R 0" : "R ") + String(rounds) + " :" + ((seconds < 10) ? "0" : "") + String(seconds);
 }
 
@@ -89,6 +93,10 @@ String Timer::getTABATATimeString() {
       }
       break;
   }
+  if ((passedTimeSec==59) && (lastBeepFor!=passedTimeSec)/* && (rounds>1)*/){
+    lastBeepFor = passedTimeSec;
+    tTone(500);
+  }
   String s = ((woTabataState == T_WORK_TIME) ? " W " : " R ");
   return ((woTabataRound + 1 < 10) ? "C0" : "C") + String(woTabataRound + 1) + s  + ((passedTimeSec < 10) ? " :0" : " :") + String(passedTimeSec);
 }
@@ -107,6 +115,7 @@ String Timer::getAMRAPTimeString() {
 }
 
 void Timer::startWorkout() {
+  lastBeepFor = -1;
   mode = m_WORKOUT;
   switch (currentWT) {
     case WT_AFAP:
@@ -122,10 +131,12 @@ void Timer::startWorkout() {
       startWorkoutTABATA();
       break;
   }
+  startFinishTone();
 }
 void Timer::finishWorkout() {
   mode = m_WORKOUT_FINISH;
   Serial.println("finishWorkout");
+  startFinishTone();
 }
 
 void Timer::shouldFinishWorkout() {
@@ -209,7 +220,10 @@ String Timer::getStartCountdownString() {
     return getDisplayString();
   }
   res = res / SECOND_TIME;
-
+  if ((res<=3) && (lastBeepFor!=res)){
+    lastBeepFor = res;
+    tTone(300);
+  }
   return ((res < 10) ? "0" : "") + String(res);
 }
 String Timer::getWorkoutWaitString() {
@@ -286,6 +300,7 @@ void Timer::reset() {
   tabataWaitTime = DEF_TABATA_WAIT_TIME;
   tabataRounds = DEF_TABATA_ROUNDS;
   timerMode = TIMER_MODE_DOWN;
+  lastBeepFor = -1;
 }
 
 void  Timer::applyInput(int input) {
@@ -541,20 +556,20 @@ void Timer::applayInputToSetClock(int input) {
       break;
     case OK_BUTTON:
       now = rtc.now();
-      rtc.adjust(DateTime(now.year(), now.month(), now.day(),setHourVal,  setMinuteVal, 0));
+      rtc.adjust(DateTime(now.year(), now.month(), now.day(), setHourVal,  setMinuteVal, 0));
       mode = m_CLOCK;
       break;
   }
-  if (setHourVal>MAX_WO_SECONDS){
+  if (setHourVal > MAX_WO_SECONDS) {
     setHourVal = 0;
   }
-  if (setHourVal<0){
+  if (setHourVal < 0) {
     setHourVal = MAX_WO_SECONDS;
   }
-  if (setMinuteVal>MAX_WO_SECONDS){
+  if (setMinuteVal > MAX_WO_SECONDS) {
     setMinuteVal = 0;
   }
-  if (setMinuteVal<0){
+  if (setMinuteVal < 0) {
     setMinuteVal = MAX_WO_SECONDS;
   }
 }
@@ -605,10 +620,59 @@ void Timer::logger() {
 
 }
 
+/**
+   для совместимость с IRRemote
+   необходимо в библиотеке ir поменять
+   //#define IR_USE_TIMER1   // tx = pin 9
+  #define IR_USE_TIMER2     // tx = pin 3
+  на
+    #define IR_USE_TIMER1   // tx = pin 9
+  //#define IR_USE_TIMER2     // tx = pin 3
+*/
+void Timer::startFinishTone() {
+  //tone(3, 3000, 100);
+  /*
+  analogWrite (BUZZER_PIN, 3000);
+  delay (1000);
+  analogWrite (BUZZER_PIN, 0);
+*/
+tTone(1500);
+/*
+  tone(BUZZER_PIN, 3020, 1000);
+  delay(1000);
+  //noTone(3);
+  //analogWrite (BUZZER_PIN, 0);
+  pinMode(BUZZER_PIN, INPUT);
+  */
+}
+
+void Timer::tTone(int ms){
+  unsigned long curTime = getTime();
+  //если старый бип не закончился, а дали команду на новый, то выключаем старый и начинаем новый
+  if (curTime<stopToneTime){
+    pinMode(BUZZER_PIN, INPUT);
+  }
+  stopToneTime = curTime+ms;
+  tone(BUZZER_PIN, 3020, ms);
+}
+
+void Timer::stopTone(){
+  if (getTime()>=stopToneTime){
+    pinMode(BUZZER_PIN, INPUT);
+  }
+}
+
+void Timer::countTone(){
+   tone(BUZZER_PIN, 3020, 800);
+  delay(800);
+  //noTone(3);
+  //analogWrite (BUZZER_PIN, 0);
+  pinMode(BUZZER_PIN, INPUT);
+}
 
 String Timer::stringFromTIMER_MODE(enum TIMER_MODE f)
 {
-  static const String strings[] = { "m_CLOCK","m_SET_CLOCK", "m_SELECT_WORKOUT", "m_SET_WORKOUT", "m_WORKOUT_WAIT_FOR_START", "m_START_COUNT_DOWN", "m_WORKOUT", "m_WORKOUT_FINISH"  };
+  static const String strings[] = { "m_CLOCK", "m_SET_CLOCK", "m_SELECT_WORKOUT", "m_SET_WORKOUT", "m_WORKOUT_WAIT_FOR_START", "m_START_COUNT_DOWN", "m_WORKOUT", "m_WORKOUT_FINISH"  };
 
   return strings[f];
 }

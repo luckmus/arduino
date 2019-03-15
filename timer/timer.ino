@@ -31,7 +31,7 @@ void setup() {
     //rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
   }
   irrecv.enableIRIn();
-  
+  //pinMode (timer->bPin, OUTPUT);
 
 }
 
@@ -54,8 +54,8 @@ void loop() {
   timer->shouldFinishWorkout();
   timer->logger();
   dsply->logger();
-    
-   delay(150);
+  timer->stopTone();   
+   delay(50);
    
 
 }
