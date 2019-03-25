@@ -1,9 +1,15 @@
+/**
+ * для нормальной (шириной в 5 пикселей) единицы в файле MD_MAX72xx_font.cpp строку:
+ * 3, 0x42, 0x7f, 0x40,  // 49 - '1'
+ * заменить на:
+ * 5, 0x44, 0x42, 0x7f, 0x40, 0x40,  // 49 - '1'
+ */
 #include <Wire.h>
 #include "RTClib.h"
 #include <IRremote.h>
 
 
-//#include "TimerCls.h"
+///#include "TimerCls.h"
 #include "Display.h"
 
 int RECV_PIN = 2;
@@ -32,30 +38,36 @@ void setup() {
   }
   irrecv.enableIRIn();
   //pinMode (timer->bPin, OUTPUT);
+  dsply->init();
+
 
 }
 
-void readInput(){
+void readInput() {
+
   if (irrecv.decode(&results)) {
-    long val=results.value;
+
+    long val = results.value;
+
     irrecv.resume();
     Serial.println(val, HEX);
-    val=val&0xFFFF;
+    val = val & 0xFFFF;
     Serial.println(val, HEX);
     timer->applyInput(val);
+
   }
-  
+
 }
 
 void loop() {
   readInput();
- 
+
   dsply->show(timer);
   timer->shouldFinishWorkout();
-  timer->logger();
-  dsply->logger();
-  timer->stopTone();   
-   delay(50);
-   
+  //timer->logger();
+  //dsply->logger();
+  //timer->stopTone();
+  delay(50);
+
 
 }

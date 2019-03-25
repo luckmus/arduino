@@ -88,6 +88,7 @@ public:
   int edt_seconds = DEFAULT_SECONDS;
   int bPin = BUZZER_PIN;
   int stopToneTime;
+  boolean toneOn = false;
   RUN_TIMER_MODE timerMode = TIMER_MODE_UP;
 
   TABATA_EDIT_MODE tabataEditMode = T_WORK_TIME;
