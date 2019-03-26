@@ -48,6 +48,8 @@ enum RUN_TIMER_MODE{
 #define OK_BUTTON 0x02FD
 #define BTN_UP 0x629D
 #define BTN_DOWN 0xA857
+#define BTN_UP_10 0x6897
+#define BTN_DOWN_10 0x9867
 #define BTN_RIGHT 0xC23D
 #define BTN_LEFT 0x22DD
 #define BTN_RESET 0x52AD

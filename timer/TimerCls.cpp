@@ -63,8 +63,8 @@ String Timer::getEMOMTimeString() {
   unsigned long totalseconds = passedTime / SECOND_TIME;
   int rounds = totalseconds / 60 + 1;
   int seconds = 60 - totalseconds % 60 - 1;
-  if ((seconds == 59) && (lastBeepFor != seconds) && (rounds > 1)) {
-    lastBeepFor = seconds;
+  if ((seconds == 59) && (lastBeepFor != totalseconds) && (rounds > 1)) {
+    lastBeepFor = totalseconds;
     tTone(500);
   }
   return  ((rounds < 10) ? "R0" : "R") + String(rounds) + ":" + ((seconds < 10) ? "0" : "") + String(seconds);
@@ -96,7 +96,8 @@ String Timer::getTABATATimeString() {
   }
 
   String s = ((woTabataState == T_WORK_TIME) ? "W" : "R");
-  return ((woTabataRound + 1 < 10) ? "0" : "") + String(woTabataRound + 1) + s  + ((passedTimeSec < 10) ? ":0" : ":") + String(passedTimeSec);
+  String pref = (passedTimeSec>99)? "" :  ((woTabataRound + 1 < 10) ? "0" : "");
+  return pref+ String(woTabataRound + 1) + s  + ((passedTimeSec < 10) ? ":0" : ":") + String(passedTimeSec);
 }
 
 /**
@@ -229,7 +230,7 @@ String Timer::getStartCountdownString() {
 String Timer::getWorkoutWaitString() {
   switch (currentWT) {
     case WT_EMOM:
-      return getSetWorkoutString() + " 00:00";
+      return getSetWorkoutString()+"...";
     case WT_AFAP:
       return "00:00";
     case WT_AMRAP:
@@ -378,6 +379,12 @@ void Timer::applayInputToSetWorkOutEMOM(int input) {
     case BTN_DOWN:
       emomRounds--;
       break;
+    case BTN_UP_10:
+      emomRounds+=10;
+      break;
+    case BTN_DOWN_10:
+      emomRounds-=10;
+      break;
     default:
       Serial.print("SetWorkOutEMOM unknow input ");
       Serial.println(input, HEX);
@@ -414,6 +421,28 @@ void Timer::applayInputToSetWorkOutAMRAP(int input) {
           break;
       }
       break;
+
+    case BTN_DOWN_10:
+      switch (timeEditMode) {
+        case EM_MINUTES:
+          edt_minutes-=10;
+          break;
+        case EM_SECONDS:
+          edt_seconds-=10;
+          break;
+      }
+      break;
+    case BTN_UP_10:
+      switch (timeEditMode) {
+        case EM_MINUTES:
+          edt_minutes+=10;
+          break;
+        case EM_SECONDS:
+          edt_seconds+=10;
+          break;
+      }
+      break;
+       
     case BTN_LEFT:
     case BTN_RIGHT:
       timeEditMode = (timeEditMode == EM_MINUTES) ? EM_SECONDS : EM_MINUTES;
@@ -456,6 +485,12 @@ void Timer::applayInputToSetWorkOutTABATA(int input) {
       break;
     case BTN_DOWN:
       value = -1;
+      break;
+    case BTN_UP_10:
+      value = 10;
+      break;
+    case BTN_DOWN_10:
+      value = -10;
       break;
   }
 
@@ -548,6 +583,12 @@ void Timer::applayInputToSetClock(int input) {
       break;
     case BTN_DOWN:
       if (timeEditMode == EM_HOURS) setHourVal--; else setMinuteVal--;
+      break;
+    case BTN_UP_10:
+      if (timeEditMode == EM_HOURS) setHourVal+=10; else setMinuteVal+=10;
+      break;
+    case BTN_DOWN_10:
+      if (timeEditMode == EM_HOURS) setHourVal-=10; else setMinuteVal-=10;
       break;
 
     case BTN_RIGHT:
