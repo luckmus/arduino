@@ -41,7 +41,7 @@ String Timer::getDisplayString() {
 }
 
 String Timer::getSetTimeString() {
-  return ((timeEditMode == EM_HOURS)?String("H"):String("M")) + ((setHourVal < 10) ? "0" : "") + String(setHourVal) + ((setMinuteVal < 10) ? ":0" : ":") + String(setMinuteVal);
+  return ((timeEditMode == EM_HOURS) ? String("H") : String("M")) + ((setHourVal < 10) ? "0" : "") + String(setHourVal) + ((setMinuteVal < 10) ? ":0" : ":") + String(setMinuteVal);
 }
 
 String Timer::getWorkoutString() {
@@ -63,7 +63,10 @@ String Timer::getEMOMTimeString() {
   unsigned long totalseconds = passedTime / SECOND_TIME;
   int rounds = totalseconds / 60 + 1;
   int seconds = 60 - totalseconds % 60 - 1;
-  if ((seconds == 59) && (lastBeepFor != totalseconds) && (rounds > 1)) {
+  if (((seconds == 0) || (seconds == 1)  || (seconds == 2)  || (seconds == 3)) && (lastBeepFor != totalseconds)) {
+    lastBeepFor = totalseconds;
+    tTone(200);
+  }else if (((seconds == MAX_WO_SECONDS) ) && (lastBeepFor != totalseconds)) {
     lastBeepFor = totalseconds;
     tTone(500);
   }
@@ -96,8 +99,8 @@ String Timer::getTABATATimeString() {
   }
 
   String s = ((woTabataState == T_WORK_TIME) ? "W" : "R");
-  String pref = (passedTimeSec>99)? "" :  ((woTabataRound + 1 < 10) ? "0" : "");
-  return pref+ String(woTabataRound + 1) + s  + ((passedTimeSec < 10) ? ":0" : ":") + String(passedTimeSec);
+  String pref = (passedTimeSec > 99) ? "" :  ((woTabataRound + 1 < 10) ? "0" : "");
+  return pref + String(woTabataRound + 1) + s  + ((passedTimeSec < 10) ? ":0" : ":") + String(passedTimeSec);
 }
 
 /**
@@ -105,12 +108,12 @@ String Timer::getTABATATimeString() {
 */
 String Timer::getAFAPTimeString() {
   unsigned long passedTime = getTime() - startTime;
-  return milisToTimeString(passedTime);
+  return milisToTimeString(passedTime, TIMER_MODE_UP);
 }
 
 String Timer::getAMRAPTimeString() {
   unsigned long passedTime = workoutTime - getTime();
-  return milisToTimeString(passedTime);
+  return milisToTimeString(passedTime, TIMER_MODE_DOWN);
 }
 
 void Timer::startWorkout() {
@@ -200,10 +203,30 @@ void Timer::startWorkoutAFAP() {
 
 }
 
-String Timer::milisToTimeString(unsigned long ms) {
+String Timer::milisToTimeString(unsigned long ms, RUN_TIMER_MODE tm) {
   unsigned long totalseconds = ms / SECOND_TIME;
   int minutes = totalseconds / 60;
   int seconds = totalseconds % 60;
+  byte secCntVal = (edt_seconds==0)? MAX_WO_SECONDS:edt_seconds; 
+  byte minCntVal = (edt_seconds==0)?edt_minutes-1:edt_minutes;
+  switch (tm) {
+    case TIMER_MODE_UP:
+        if (((seconds == secCntVal) || (seconds == (secCntVal-1))  || (seconds == (secCntVal-2))  || (seconds == (secCntVal-3))) && (minutes == minCntVal) && (lastBeepFor != seconds)) {
+        lastBeepFor = seconds;
+        tTone(200);
+      }
+      break;
+
+    case TIMER_MODE_DOWN:
+      if (((seconds == 0) || (seconds == 1) || (seconds == 2)  || (seconds == 3)) && (minutes == 0) && (lastBeepFor != totalseconds)) {
+        lastBeepFor = seconds;
+        tTone( 200);
+      }
+      break;
+  }
+
+
+
   return  ((minutes < 10) ? "0" : "") + String(minutes) + ":" + ((seconds < 10) ? "0" : "") + String(seconds);
 }
 
@@ -230,7 +253,7 @@ String Timer::getStartCountdownString() {
 String Timer::getWorkoutWaitString() {
   switch (currentWT) {
     case WT_EMOM:
-      return getSetWorkoutString()+"...";
+      return getSetWorkoutString() + "...";
     case WT_AFAP:
       return "00:00";
     case WT_AMRAP:
@@ -247,7 +270,7 @@ String Timer::getSetWorkoutString() {
       if (emomRounds < 10) {
         return "R 0" + String(emomRounds);
       }
-      return "R "+String(emomRounds);
+      return "R " + String(emomRounds);
     case WT_AMRAP:
     case WT_AFAP:
       return ((edt_minutes < 10) ? "0" : "") + String(edt_minutes) + ":" + ((edt_seconds < 10) ? "0" : "") + String(edt_seconds);
@@ -380,10 +403,10 @@ void Timer::applayInputToSetWorkOutEMOM(int input) {
       emomRounds--;
       break;
     case BTN_UP_10:
-      emomRounds+=10;
+      emomRounds += 10;
       break;
     case BTN_DOWN_10:
-      emomRounds-=10;
+      emomRounds -= 10;
       break;
     default:
       Serial.print("SetWorkOutEMOM unknow input ");
@@ -425,24 +448,24 @@ void Timer::applayInputToSetWorkOutAMRAP(int input) {
     case BTN_DOWN_10:
       switch (timeEditMode) {
         case EM_MINUTES:
-          edt_minutes-=10;
+          edt_minutes -= 10;
           break;
         case EM_SECONDS:
-          edt_seconds-=10;
+          edt_seconds -= 10;
           break;
       }
       break;
     case BTN_UP_10:
       switch (timeEditMode) {
         case EM_MINUTES:
-          edt_minutes+=10;
+          edt_minutes += 10;
           break;
         case EM_SECONDS:
-          edt_seconds+=10;
+          edt_seconds += 10;
           break;
       }
       break;
-       
+
     case BTN_LEFT:
     case BTN_RIGHT:
       timeEditMode = (timeEditMode == EM_MINUTES) ? EM_SECONDS : EM_MINUTES;
@@ -585,10 +608,10 @@ void Timer::applayInputToSetClock(int input) {
       if (timeEditMode == EM_HOURS) setHourVal--; else setMinuteVal--;
       break;
     case BTN_UP_10:
-      if (timeEditMode == EM_HOURS) setHourVal+=10; else setMinuteVal+=10;
+      if (timeEditMode == EM_HOURS) setHourVal += 10; else setMinuteVal += 10;
       break;
     case BTN_DOWN_10:
-      if (timeEditMode == EM_HOURS) setHourVal-=10; else setMinuteVal-=10;
+      if (timeEditMode == EM_HOURS) setHourVal -= 10; else setMinuteVal -= 10;
       break;
 
     case BTN_RIGHT:
@@ -689,39 +712,36 @@ void Timer::startFinishTone() {
 }
 
 void Timer::tTone(int ms) {
-  unsigned long curTime = getTime();
-  /*
-    //если старый бип не закончился, а дали команду на новый, то выключаем старый и начинаем новый
-    if (curTime<stopToneTime){
-    pinMode(BUZZER_PIN, INPUT);
-    }
-  */
-  stopToneTime = curTime + ms;
-  toneOn = true;
-  //pinMode(BUZZER_PIN, OUTPUT);
-  tone(BUZZER_PIN, 3020, ms);
-  //analogWrite (BUZZER_PIN, 3020);
-  //*
-  delay(ms);
-  //*
-  noTone(BUZZER_PIN);
-  analogWrite (BUZZER_PIN, 0);
-  noTone(BUZZER_PIN);
-  pinMode(BUZZER_PIN, INPUT);
-  noTone(BUZZER_PIN);
-  //*/
+  toneTime = ms;
+  shouldTone = true;
 
 }
 
-void Timer::stopTone() {
-  if ((getTime() >= stopToneTime) && (toneOn == true)) {
+void Timer::goTone() {
+  if (shouldTone) {
+    unsigned long curTime = getTime();
+    /*
+      //если старый бип не закончился, а дали команду на новый, то выключаем старый и начинаем новый
+      if (curTime<stopToneTime){
+      pinMode(BUZZER_PIN, INPUT);
+      }
+    */
+    stopToneTime = curTime + toneTime;
+    toneOn = true;
+    //pinMode(BUZZER_PIN, OUTPUT);
+    tone(BUZZER_PIN, 3020, toneTime);
+    //analogWrite (BUZZER_PIN, 3020);
+    //*
+    delay(toneTime);
+    //*
     noTone(BUZZER_PIN);
     analogWrite (BUZZER_PIN, 0);
     noTone(BUZZER_PIN);
     pinMode(BUZZER_PIN, INPUT);
     noTone(BUZZER_PIN);
-    toneOn = false;
+    shouldTone = false;
   }
+  //*/
 }
 
 void Timer::countTone() {

@@ -66,7 +66,7 @@ void loop() {
   timer->shouldFinishWorkout();
   //timer->logger();
   //dsply->logger();
-  //timer->stopTone();
+  timer->goTone();
   delay(50);
 
 

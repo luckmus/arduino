@@ -106,6 +106,8 @@ public:
   /**текущий раунд табаты*/
   int woTabataRound;
   byte lastBeepFor = -1;
+  short toneTime;
+  boolean shouldTone;
   
   TIMER_MODE getMode();
   unsigned long getTime();
@@ -146,12 +148,12 @@ public:
   String getEMOMTimeString();
   String getTABATATimeString();
   String getSetTimeString();
-  String milisToTimeString(unsigned long ms);
+  String milisToTimeString(unsigned long ms, RUN_TIMER_MODE tm);
   void startCountdown();
   void startFinishTone();
   void countTone();
   void tTone(int ms);
-  void stopTone();
+  void goTone();
   
 };
 
