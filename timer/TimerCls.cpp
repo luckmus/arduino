@@ -36,7 +36,17 @@ String Timer::getDisplayString() {
     return "unavai";
   } else {
     now = rtc.now();
-    return ((now.hour() < 10) ? "0" : "") + String(now.hour()) + ":" + ((now.minute() < 10) ? "0" : "") + String(now.minute())/*+ ":" + ((now.second() < 10) ? "0" : "") + String(now.second())*/;
+    String t =  String(millis());
+    int m = 0;
+    if (t.length()>3){
+      t=t.substring(t.length()-3, t.length());
+      m=t.toInt();
+    }else{
+      m=t.toInt();
+    }
+    
+    String separator = m < 200 ? " " : ":";
+    return ((now.hour() < 10) ? "0" : "") + String(now.hour()) + separator + ((now.minute() < 10) ? "0" : "") + String(now.minute())/*+ ":" + ((now.second() < 10) ? "0" : "") + String(now.second())*/;
   }
 }
 
@@ -66,7 +76,7 @@ String Timer::getEMOMTimeString() {
   if (((seconds == 0) || (seconds == 1)  || (seconds == 2)  || (seconds == 3)) && (lastBeepFor != totalseconds)) {
     lastBeepFor = totalseconds;
     tTone(200);
-  }else if (((seconds == MAX_WO_SECONDS) ) && (lastBeepFor != totalseconds)) {
+  } else if (((seconds == MAX_WO_SECONDS) ) && (lastBeepFor != totalseconds)) {
     lastBeepFor = totalseconds;
     tTone(500);
   }
@@ -207,11 +217,11 @@ String Timer::milisToTimeString(unsigned long ms, RUN_TIMER_MODE tm) {
   unsigned long totalseconds = ms / SECOND_TIME;
   int minutes = totalseconds / 60;
   int seconds = totalseconds % 60;
-  byte secCntVal = (edt_seconds==0)? MAX_WO_SECONDS:edt_seconds; 
-  byte minCntVal = (edt_seconds==0)?edt_minutes-1:edt_minutes;
+  byte secCntVal = (edt_seconds == 0) ? MAX_WO_SECONDS : edt_seconds;
+  byte minCntVal = (edt_seconds == 0) ? edt_minutes - 1 : edt_minutes;
   switch (tm) {
     case TIMER_MODE_UP:
-        if (((seconds == secCntVal) || (seconds == (secCntVal-1))  || (seconds == (secCntVal-2))  || (seconds == (secCntVal-3))) && (minutes == minCntVal) && (lastBeepFor != seconds)) {
+      if (((seconds == secCntVal) || (seconds == (secCntVal - 1))  || (seconds == (secCntVal - 2))  || (seconds == (secCntVal - 3))) && (minutes == minCntVal) && (lastBeepFor != seconds)) {
         lastBeepFor = seconds;
         tTone(200);
       }
