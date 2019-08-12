@@ -254,7 +254,7 @@ String Timer::getStartCountdownString() {
     return getDisplayString();
   }
   res = res / SECOND_TIME;
-  if ((res <= 3) && (lastBeepFor != res)) {
+  if ((res <= 5) && (lastBeepFor != res)) {
     lastBeepFor = res;
     tTone(300);
   }
@@ -662,7 +662,7 @@ void Timer::applayInputToSelectWorkOut(int input) {
 
     case OK_BUTTON:
       mode = m_SET_WORKOUT;
-      emomRounds = MIN_EMOM;
+      emomRounds = DEFAULT_MINUTES;
       break;
     default:
       Serial.print("unknow input ");
