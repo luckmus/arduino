@@ -489,10 +489,10 @@ void Timer::applayInputToSetWorkOutAMRAP(int input) {
 */
 void  Timer::checkWOTime() {
   if (edt_minutes > MAX_WO_MINUTES) {
-    edt_minutes = DEFAULT_MINUTES;
+    edt_minutes = MIN_WO_MINUTES;
   }
 
-  if (edt_minutes < DEFAULT_MINUTES) {
+  if (edt_minutes < MIN_WO_MINUTES) {
     edt_minutes = MAX_WO_MINUTES;
   }
 
