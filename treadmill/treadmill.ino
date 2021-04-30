@@ -22,11 +22,20 @@ boolean digitalValue=0;// variable to store the value coming from pin2
 
 ////hall
 
-int spinDistance = 60;
+float spinDistance = 0.6;
 
 enum LCD_SHOW_MODE {
 
-  m_WAIT,
+  m_WAIT
+
+};
+
+enum TM_STATE {
+
+  s_WAIT,
+  s_STARTING, //переходит после нажатия кнопки старт
+  s_STARTED,  //Наступает после первого оборота
+  s_PAUSED
 
 };
 
@@ -73,15 +82,17 @@ class LCD {
 
 
 class Meter {
-  int startTime;
+  TM_STATE state = s_WAIT;
+  long startTime;
   byte lastHallVal;
-  int spinCnt = 0;
+  long spinCnt = 0;
   //необходимое количество боротов для измерения средней скорости
   byte spinCountForAWGCalc = 3;
   byte awgSpinCounter;
   float avgSpeed = 0;
+  float curSpeed = 0;
   //время последнего измерения средней скорости
-  int lastMeasTime;
+  long lastMeasTime;
   LCD lcd;
   public :
   Meter(LCD val){
@@ -89,6 +100,7 @@ class Meter {
   }
 
   void start(){
+    state = s_STARTING;
     startTime = millis();
     lastMeasTime = startTime;
     awgSpinCounter = spinCountForAWGCalc;
@@ -103,32 +115,75 @@ class Meter {
     
   }
   void spin(){
+    switch(state){
+      case s_STARTING:
+        state = s_STARTED;
+        break;
+      case s_PAUSED:
+        return;
+      case s_WAIT:
+      //если в режиме ожидания начали бежать, то автоматически стартуем
+        if (spinCnt>5){
+          start();
+        }
+        break;
+    }
+
     spinCnt++;
     Serial.print("spin: ");
     awgSpinCounter--;
     if (awgSpinCounter <=0){
-      calcAVGSpeed();
+      calcSpeed();
     }
 
   }
 
-  void calcAVGSpeed(){
-    int currTime = millis();
-    int timeBetwSpins = currTime-lastMeasTime;
+String milisToTimeString(unsigned long ms) {
+  unsigned long totalseconds = ms / 1000;
+  int hours = totalseconds / 3600;
+  int minutes = (totalseconds / 60)%60;
+  int seconds = totalseconds % 60;
+  String s = ((hours < 10) ? "0" : "") + String(hours) + ":"+ ((minutes < 10) ? "0" : "") + String(minutes) + ":" + ((seconds < 10) ? "0" : "") + String(seconds);
+  return s;
+}
+
+  void calcSpeed(){
+    unsigned long currTime = millis();
+    long timeBetwSpins = currTime-lastMeasTime;
         Serial.print("timeBetwSpins: ");
     Serial.println(timeBetwSpins);
-    int dist = spinDistance*spinCountForAWGCalc;
-    avgSpeed = dist/(timeBetwSpins/1000.0);
+    float dist = spinDistance*spinCountForAWGCalc;
+    curSpeed = dist/(timeBetwSpins/1000.0);
+    float d = getDistance();
+    avgSpeed = d/((currTime - startTime)/1000.0);
     lastMeasTime=currTime;
+    
     awgSpinCounter = spinCountForAWGCalc;
-      Serial.print("distance: ");
-    Serial.println(getDistance());
+    String totalTime = "";
+    
+    Serial.print("spinCnt: ");
+    Serial.println(spinCnt);
+    Serial.print("distance: ");
+    Serial.println(d);
+
+    Serial.print("curSpeed: ");
+    Serial.print(curSpeed);
+    curSpeed = (curSpeed/1000.0)*3600.0;
+    Serial.print(" km/h: ");
+    Serial.println(curSpeed);
+    
     Serial.print("avgSpeed: ");
+    Serial.print(avgSpeed);
+    avgSpeed = (avgSpeed/1000.0)*3600.0;
+    Serial.print(" km/h: ");
     Serial.println(avgSpeed);
+    Serial.print(" total time: ");
+    Serial.println( milisToTimeString(currTime - startTime));
   }
 
-  int getDistance(){
-    return spinDistance*spinCnt;
+  float getDistance(){
+    float d = spinDistance*spinCnt; return d;
+    //return spinDistance*spinCnt;
   }
 };
 
@@ -178,7 +233,7 @@ void loop() {
   meter->readHallValue();
   lcdObject -> repaint();
   lcdObject -> onButtonClick();
-  Serial.println('/');
-  delay(200);
+  //Serial.println('*');
+  delay(50);
 
 }
