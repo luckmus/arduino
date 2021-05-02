@@ -62,29 +62,27 @@ class LCD {
     LCD() {
 
     }
-
-  void onButtonClick() {
-
-    int btn = read_LCD_buttons();
-
-    switch (btn) {
-
-    }
     
-  }
+  
 
-  void repaint() {
+  void repaint(String line1, String line2) {
     lcd.clear();
-    lcd.print("TEST");
-    
+    lcd.setCursor(0,0);            // move cursor to second line "1" and 9 spaces over
+    lcd.print(line1);
+    lcd.setCursor(0,1); 
+    lcd.print(line2);
   }
 };
 
 
 class Meter {
   TM_STATE state = s_WAIT;
-  long startTime;
+  long startTime=0;
+  long lastSpinTime;
+  long lastRepaint = 0;
   byte lastHallVal;
+  int prevBtn = btnNONE;
+  long prevBtnTime = 0;
   long spinCnt = 0;
   //необходимое количество боротов для измерения средней скорости
   byte spinCountForAWGCalc = 3;
@@ -93,10 +91,10 @@ class Meter {
   float curSpeed = 0;
   //время последнего измерения средней скорости
   long lastMeasTime;
-  LCD lcd;
+  LCD *lcdOb;
   public :
-  Meter(LCD val){
-    lcd = val;
+  Meter(LCD *val){
+    lcdOb = val;
   }
 
   void start(){
@@ -104,17 +102,27 @@ class Meter {
     startTime = millis();
     lastMeasTime = startTime;
     awgSpinCounter = spinCountForAWGCalc;
+    spinCnt = 0;
+    curSpeed = 0;
+    avgSpeed = 0;
     Serial.println("start");
   }
   void readHallValue(){
+    if (state == s_PAUSED){
+        return;
+    }
     byte rh = readHall();
     if (rh != lastHallVal){
       lastHallVal = rh;
       spin();
+    }else if (millis()-lastSpinTime>3000){
+      calcSpeed();
+      curSpeed = 0;
     }
     
   }
   void spin(){
+    lastSpinTime = millis();
     switch(state){
       case s_STARTING:
         state = s_STARTED;
@@ -178,18 +186,65 @@ String milisToTimeString(unsigned long ms) {
     Serial.print(" km/h: ");
     Serial.println(avgSpeed);
     Serial.print(" total time: ");
+   
     Serial.println( milisToTimeString(currTime - startTime));
+
+  }
+
+  void display(){
+    unsigned long currTime = millis();
+    if ((currTime-lastRepaint)<1000){
+      return;
+    }
+    lastRepaint = currTime;
+    String t = milisToTimeString(currTime - startTime);
+    //char TextBuffer[16];
+    //snprintf  (TextBuffer,  sizeof(buff), "%f", avgSpeed);
+
+    lcdOb->repaint (
+      String(avgSpeed,2)+"  "+String(getDistance(),1),
+      //String(TextBuffer),
+       String(curSpeed, 2)+" "+t);
   }
 
   float getDistance(){
     float d = spinDistance*spinCnt; return d;
     //return spinDistance*spinCnt;
   }
+
+  void onButtonClick() {
+
+    int btn = read_LCD_buttons();
+    if (btn!=btnNONE){
+      if (prevBtn == btn && (millis()-prevBtnTime)<500){
+
+        return;  
+      }
+      prevBtn = btn;
+      prevBtnTime = millis();
+      Serial.print("button:");
+      Serial.println(btn);
+    }
+
+    switch (btn) {
+      case btnSELECT:
+      if (state == s_PAUSED){
+          state = s_STARTED; 
+      }else{
+        start();
+      }
+      break;
+      case btnLEFT:
+        state = s_PAUSED;
+      break;
+    }
+    
+  }
 };
 
 
 LCD *lcdObject = new LCD();
-Meter *meter = new Meter(*lcdObject);
+Meter *meter = new Meter(lcdObject);
 
 byte readHall(){
   //https://osoyoo.com/2017/07/28/arduino-lesson-hall-effect-sensor-module/
@@ -226,13 +281,13 @@ void setup() {
   //hall
   pinMode(digitalPin,INPUT);//set the state of D0 as INPUT
   pinMode(ledPin,OUTPUT);//set the state of pin13 as OUTPUT
-  meter->start();
+  //meter->start();
 }
 
 void loop() {
   meter->readHallValue();
-  lcdObject -> repaint();
-  lcdObject -> onButtonClick();
+  meter->display();
+  meter -> onButtonClick();
   //Serial.println('*');
   delay(50);
 
