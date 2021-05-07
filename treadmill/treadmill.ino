@@ -13,6 +13,8 @@ int adc_key_in = 0;
 #define btnSELECT 4
 #define btnNONE 5
 
+#define DEF_DELAY 50
+
 ////hall
 const int ledPin = 13;//the led attach to pin13
 int sensorPin = A0; // select the input pin for the potentiometer
@@ -77,18 +79,21 @@ class LCD {
 
 class Meter {
   TM_STATE state = s_WAIT;
-  long startTime=0;
-  long lastSpinTime;
-  long lastRepaint = 0;
+  unsigned long startTime=0;
+  //время в течении которого таймер был на паузе. это значение будет вычититься из общего времени
+  unsigned long totalPauseTime=0;
+  unsigned long lastSpinTime = 0;
+  unsigned long lastRepaint = 0;
   byte lastHallVal;
   int prevBtn = btnNONE;
-  long prevBtnTime = 0;
-  long spinCnt = 0;
+  unsigned long prevBtnTime = 0;
+  unsigned long spinCnt = 0;
   //необходимое количество боротов для измерения средней скорости
   byte spinCountForAWGCalc = 3;
   byte awgSpinCounter;
   float avgSpeed = 0;
   float curSpeed = 0;
+  
   //время последнего измерения средней скорости
   long lastMeasTime;
   LCD *lcdOb;
@@ -105,10 +110,20 @@ class Meter {
     spinCnt = 0;
     curSpeed = 0;
     avgSpeed = 0;
+    totalPauseTime=0;
     Serial.println("start");
   }
+
+  void addPauseTime(int t){
+    totalPauseTime += t;
+  }
+
+  boolean isPaused(){
+    return state == s_PAUSED;
+  }
+  
   void readHallValue(){
-    if (state == s_PAUSED){
+    if (isPaused()){
         return;
     }
     byte rh = readHall();
@@ -132,12 +147,17 @@ class Meter {
       case s_WAIT:
       //если в режиме ожидания начали бежать, то автоматически стартуем
         if (spinCnt>5){
+          //state = s_STARTING
           start();
         }
         break;
     }
 
     spinCnt++;
+
+    if (state!=s_STARTED){
+      return;
+    }
     Serial.print("spin: ");
     awgSpinCounter--;
     if (awgSpinCounter <=0){
@@ -155,15 +175,17 @@ String milisToTimeString(unsigned long ms) {
   return s;
 }
 
+  
+
   void calcSpeed(){
     unsigned long currTime = millis();
     long timeBetwSpins = currTime-lastMeasTime;
-        Serial.print("timeBetwSpins: ");
+    Serial.print("timeBetwSpins: ");
     Serial.println(timeBetwSpins);
     float dist = spinDistance*spinCountForAWGCalc;
     curSpeed = dist/(timeBetwSpins/1000.0);
     float d = getDistance();
-    avgSpeed = d/((currTime - startTime)/1000.0);
+    avgSpeed = d/((currTime - startTime - totalPauseTime)/1000.0);
     lastMeasTime=currTime;
     
     awgSpinCounter = spinCountForAWGCalc;
@@ -192,19 +214,52 @@ String milisToTimeString(unsigned long ms) {
   }
 
   void display(){
-    unsigned long currTime = millis();
-    if ((currTime-lastRepaint)<1000){
-      return;
+    String line1 = "";
+    String line2 = "";
+    switch(state){
+      case s_WAIT:
+          line1 = "      WAIT";
+        break;
+        case s_STARTING:
+          line1 = "   STARTING...";
+        break;
+        case s_STARTED:
+        case s_PAUSED:
+             unsigned long currTime = millis();
+              if ((currTime-lastRepaint)<500 ){
+                return;
+              }
+              lastRepaint = currTime;
+              unsigned long allTime = currTime - startTime-totalPauseTime;
+              String t = milisToTimeString(allTime);
+              if (isPaused()){
+                if ((currTime % 60)%2 ==0){
+                  t = "PAUSED  ";
+                }
+              }
+           line1=format(String(avgSpeed,2), String(getDistance(),1));
+           line2=format(String(curSpeed, 2), t);
+        break;
     }
-    lastRepaint = currTime;
-    String t = milisToTimeString(currTime - startTime);
     //char TextBuffer[16];
     //snprintf  (TextBuffer,  sizeof(buff), "%f", avgSpeed);
 
     lcdOb->repaint (
-      String(avgSpeed,2)+"  "+String(getDistance(),1),
-      //String(TextBuffer),
-       String(curSpeed, 2)+" "+t);
+      line1,line2);
+  }
+
+  String format(String s1, String s2){
+    byte l1 = s1.length();
+    byte l2 = s2.length();
+    if (l1+l2<16){
+      for (byte i=0; i<16-l1-l2; i++){
+        s1+=" ";
+      }
+      s1 += s2;
+    }else{
+      s1+=' '+s2;
+    }
+    return s1;
   }
 
   float getDistance(){
@@ -285,10 +340,15 @@ void setup() {
 }
 
 void loop() {
+  unsigned long t = millis();
+  
   meter->readHallValue();
   meter->display();
   meter -> onButtonClick();
   //Serial.println('*');
-  delay(50);
-
+  delay(DEF_DELAY);
+  if (meter->isPaused()){
+    meter->addPauseTime(millis()-t);  
+  }
+  
 }
