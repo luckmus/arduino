@@ -13,11 +13,11 @@ int adc_key_in = 0;
 #define btnSELECT 4
 #define btnNONE 5
 
-#define DEF_DELAY 50
+#define DEF_DELAY 1
 
 ////hall
 const int ledPin = 13;//the led attach to pin13
-int sensorPin = A0; // select the input pin for the potentiometer
+int sensorPin = 5; // select the input pin for the potentiometer
 int digitalPin=2; //D0 attach to pin2
 int sensorValue = 0;// variable to store the value coming from A0
 boolean digitalValue=0;// variable to store the value coming from pin2
@@ -43,6 +43,7 @@ enum TM_STATE {
 
 // read the buttons 
 int read_LCD_buttons() {
+  //return btnNONE;
   adc_key_in = analogRead(0); // read the value from the sensor  
   // my buttons when read are centered at these valies: 0, 144, 329, 504, 741 
   // we add approx 50 to those values and check to see if we are close 
@@ -93,6 +94,7 @@ class Meter {
   byte awgSpinCounter;
   float avgSpeed = 0;
   float curSpeed = 0;
+  boolean halfSpin = false;
   
   //время последнего измерения средней скорости
   long lastMeasTime;
@@ -129,7 +131,10 @@ class Meter {
     byte rh = readHall();
     if (rh != lastHallVal){
       lastHallVal = rh;
-      spin();
+      halfSpin = !halfSpin;
+      if (halfSpin){
+        spin();
+      }
     }else if (millis()-lastSpinTime>3000){
       calcSpeed();
       curSpeed = 0;
@@ -137,6 +142,10 @@ class Meter {
     
   }
   void spin(){
+    Serial.print("  S P I N   ");
+    Serial.print(spinCnt);
+    Serial.print("   ");
+    Serial.println( milisToTimeString(millis()));
     lastSpinTime = millis();
     switch(state){
       case s_STARTING:
@@ -180,8 +189,10 @@ String milisToTimeString(unsigned long ms) {
   void calcSpeed(){
     unsigned long currTime = millis();
     long timeBetwSpins = currTime-lastMeasTime;
+    /*
     Serial.print("timeBetwSpins: ");
     Serial.println(timeBetwSpins);
+    */
     float dist = spinDistance*spinCountForAWGCalc;
     curSpeed = dist/(timeBetwSpins/1000.0);
     float d = getDistance();
@@ -190,26 +201,31 @@ String milisToTimeString(unsigned long ms) {
     
     awgSpinCounter = spinCountForAWGCalc;
     String totalTime = "";
-    
+    /*
     Serial.print("spinCnt: ");
     Serial.println(spinCnt);
     Serial.print("distance: ");
     Serial.println(d);
-
+    */
+/*
     Serial.print("curSpeed: ");
     Serial.print(curSpeed);
+*/
     curSpeed = (curSpeed/1000.0)*3600.0;
+    /*
     Serial.print(" km/h: ");
     Serial.println(curSpeed);
     
     Serial.print("avgSpeed: ");
     Serial.print(avgSpeed);
+    /*
     avgSpeed = (avgSpeed/1000.0)*3600.0;
+    /*
     Serial.print(" km/h: ");
     Serial.println(avgSpeed);
     Serial.print(" total time: ");
-   
-    Serial.println( milisToTimeString(currTime - startTime));
+   */
+    //Serial.println( milisToTimeString(currTime - startTime));
 
   }
 
@@ -305,10 +321,13 @@ byte readHall(){
   //https://osoyoo.com/2017/07/28/arduino-lesson-hall-effect-sensor-module/
   sensorValue = analogRead(sensorPin); //read the value of A0
   digitalValue=digitalRead(digitalPin); //read the value of D0
- // Serial.print("Sensor Value "); // print label to serial monitor 
-//  Serial.println(sensorValue); //print the value of A0
-//  Serial.print("Digital Value "); // print label to serial monitor 
-//  Serial.println(digitalValue); //print the value of D0 in the serial
+  /*
+  Serial.print("Sensor Value "); // print label to serial monitor 
+  Serial.println(sensorValue); //print the value of A0
+  */
+  //Serial.print("Digital Value "); // print label to serial monitor 
+  //Serial.println(digitalValue); //print the value of D0 in the serial
+
   if( digitalValue==HIGH )//if the value of D0 is HIGH
   {
     digitalWrite(ledPin,LOW);//turn off the led
