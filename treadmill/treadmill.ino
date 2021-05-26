@@ -77,10 +77,65 @@ class LCD {
   }
 };
 
+class Stack{
+  int items[3] = {0, 0, 0};
+
+  public:
+    Stack() {
+
+    }
+
+    void push(int val){
+      items[0] = items[1];
+      items[1] = items[2];
+      items[2] = val;
+    }
+
+    void clear(){
+      items[0] = 0;
+      items[1] = 0;
+      items[2] = 0;
+    }
+
+    
+/*
+ * 340 690  352
+ */
+
+    boolean isMissSpin(){
+      if ((items[0]>0) &&  (items[1]>items[0] || items[1]>items[2])){
+        float extremeAvgSum = ((float)items[0]+items[2])/2;
+        //процент на сколько второе вращение меодленнее первого и третьего
+        float prc = items[1]/extremeAvgSum;
+        /*
+        //если медленее чем на 70, то считаем, что пропустили один оборот
+        Serial.print(items[0]);
+        Serial.print("  ");
+        Serial.print(items[1]);
+        Serial.print("  ");
+        Serial.print(items[2]);
+        Serial.print(" ");
+        Serial.print(items[1]);
+        Serial.print("/");
+        Serial.print(extremeAvgSum);
+        Serial.print("=");
+        
+        Serial.print(prc);
+        Serial.println(" ");
+        */
+        return prc>1.6 && prc<3;
+      }
+
+      return false;
+    }
+    
+};
 
 class Meter {
   TM_STATE state = s_WAIT;
   unsigned long startTime=0;
+  //время в течении которого таймер НЕ был на паузе, но при этом колесо не вращалось
+  unsigned long noRunningTimeTime=0;
   //время в течении которого таймер был на паузе. это значение будет вычититься из общего времени
   unsigned long totalPauseTime=0;
   unsigned long lastSpinTime = 0;
@@ -93,12 +148,15 @@ class Meter {
   byte spinCountForAWGCalc = 3;
   byte awgSpinCounter;
   float avgSpeed = 0;
+  float avgTempo = 0;
   float curSpeed = 0;
+  float curTempo = 0;
   boolean halfSpin = false;
   
   //время последнего измерения средней скорости
   long lastMeasTime;
   LCD *lcdOb;
+  Stack *stack = new Stack();
   public :
   Meter(LCD *val){
     lcdOb = val;
@@ -111,13 +169,22 @@ class Meter {
     awgSpinCounter = spinCountForAWGCalc;
     spinCnt = 0;
     curSpeed = 0;
+    curTempo = 0;
     avgSpeed = 0;
+    avgTempo = 0;
     totalPauseTime=0;
+    noRunningTimeTime = 0;
+    lastSpinTime = 0;
+    stack->clear();
     Serial.println("start");
   }
 
   void addPauseTime(int t){
     totalPauseTime += t;
+  }
+
+  void addNoRunningTimeTime(int t){
+    noRunningTimeTime += t;
   }
 
   boolean isPaused(){
@@ -129,6 +196,7 @@ class Meter {
         return;
     }
     byte rh = readHall();
+    //lastHallVal++;
     if (rh != lastHallVal){
       lastHallVal = rh;
       halfSpin = !halfSpin;
@@ -136,16 +204,22 @@ class Meter {
         spin();
       }
     }else if (millis()-lastSpinTime>3000){
-      calcSpeed();
+      //calcSpeed();
       curSpeed = 0;
     }
     
   }
   void spin(){
+    /*
     Serial.print("  S P I N   ");
     Serial.print(spinCnt);
     Serial.print("   ");
-    Serial.println( milisToTimeString(millis()));
+    Serial.print( milisToTimeString(millis()));
+    Serial.print("   ");
+    */
+    long st = millis()-lastSpinTime;
+    //Serial.println( st);
+    stack->push(st);
     lastSpinTime = millis();
     switch(state){
       case s_STARTING:
@@ -163,11 +237,19 @@ class Meter {
     }
 
     spinCnt++;
+    
+    if (stack->isMissSpin()){
+      stack->clear();
+      spinCnt++;
+      //awgSpinCounter--;
+      Serial.println(" ADD missed spin  ");
+    }
+    
 
     if (state!=s_STARTED){
       return;
     }
-    Serial.print("spin: ");
+    //Serial.print("spin: ");
     awgSpinCounter--;
     if (awgSpinCounter <=0){
       calcSpeed();
@@ -189,17 +271,28 @@ String milisToTimeString(unsigned long ms) {
   void calcSpeed(){
     unsigned long currTime = millis();
     long timeBetwSpins = currTime-lastMeasTime;
+    int addSpin =0;//добавим число спинов, если был пропущенный спин, мы его вычли и получили отрицательное число/ этот спин надо учесть при рассчете текущей скорости;
     /*
+     * addSpin = awgSpinCounter<0?abs(awgSpinCounter):0;
     Serial.print("timeBetwSpins: ");
     Serial.println(timeBetwSpins);
+    
+    Serial.print("awgSpinCounter: ");
+    Serial.print(awgSpinCounter);
+    Serial.print(" awgadd: ");
+    Serial.println(addSpin);
     */
-    float dist = spinDistance*spinCountForAWGCalc;
+    
+    float dist = spinDistance*(spinCountForAWGCalc +addSpin);//
     curSpeed = dist/(timeBetwSpins/1000.0);
     float d = getDistance();
-    avgSpeed = d/((currTime - startTime - totalPauseTime)/1000.0);
+    avgSpeed = d/((currTime - startTime - totalPauseTime-noRunningTimeTime)/1000.0);
+    avgSpeed = (avgSpeed/1000.0)*3600.0;
+    avgTempo = 60/avgSpeed;
     lastMeasTime=currTime;
     
     awgSpinCounter = spinCountForAWGCalc;
+    //Serial.print("set new awgSpinCounter: "); Serial.println(awgSpinCounter);
     String totalTime = "";
     /*
     Serial.print("spinCnt: ");
@@ -212,6 +305,7 @@ String milisToTimeString(unsigned long ms) {
     Serial.print(curSpeed);
 */
     curSpeed = (curSpeed/1000.0)*3600.0;
+    curTempo = 60/curSpeed;
     /*
     Serial.print(" km/h: ");
     Serial.println(curSpeed);
@@ -253,8 +347,24 @@ String milisToTimeString(unsigned long ms) {
                   t = "PAUSED  ";
                 }
               }
-           line1=format(String(avgSpeed,2), String(getDistance(),1));
-           line2=format(String(curSpeed, 2), t);
+           String dc = String(getDistance(),0);
+           ///*
+           if (getDistance()>1000){
+            dc = String(getDistance()/1000,2);
+           }
+           String avgTempoStr = String(avgTempo,1);
+           if (avgTempo>99){
+            avgTempoStr="----";
+           }
+           String curTempoStr = String(curTempo,2);
+           if (isWaitInStartedMode()){
+            curTempoStr="----";
+            stack->clear();
+           }
+           line1=format(format(avgTempoStr, String(avgSpeed,1), 9), dc, 16);
+           line2=format(curTempoStr, t, 16);
+           //*/
+           //line1 = dc;
         break;
     }
     //char TextBuffer[16];
@@ -264,11 +374,15 @@ String milisToTimeString(unsigned long ms) {
       line1,line2);
   }
 
-  String format(String s1, String s2){
+  boolean isWaitInStartedMode(){
+    return (curTempo>99) || (curSpeed == 0);
+  }
+
+  String format(String s1, String s2, int resLen){
     byte l1 = s1.length();
     byte l2 = s2.length();
-    if (l1+l2<16){
-      for (byte i=0; i<16-l1-l2; i++){
+    if (l1+l2<resLen){
+      for (byte i=0; i<resLen-l1-l2; i++){
         s1+=" ";
       }
       s1 += s2;
@@ -277,6 +391,7 @@ String milisToTimeString(unsigned long ms) {
     }
     return s1;
   }
+  
 
   float getDistance(){
     float d = spinDistance*spinCnt; return d;
@@ -319,7 +434,7 @@ Meter *meter = new Meter(lcdObject);
 
 byte readHall(){
   //https://osoyoo.com/2017/07/28/arduino-lesson-hall-effect-sensor-module/
-  sensorValue = analogRead(sensorPin); //read the value of A0
+  //sensorValue = analogRead(sensorPin); //read the value of A0
   digitalValue=digitalRead(digitalPin); //read the value of D0
   /*
   Serial.print("Sensor Value "); // print label to serial monitor 
@@ -327,7 +442,7 @@ byte readHall(){
   */
   //Serial.print("Digital Value "); // print label to serial monitor 
   //Serial.println(digitalValue); //print the value of D0 in the serial
-
+/*
   if( digitalValue==HIGH )//if the value of D0 is HIGH
   {
     digitalWrite(ledPin,LOW);//turn off the led
@@ -336,6 +451,7 @@ byte readHall(){
   {
     digitalWrite(ledPin,HIGH);//turn on the led
   }
+  */
   return digitalValue;
 }
 
@@ -361,13 +477,22 @@ void setup() {
 void loop() {
   unsigned long t = millis();
   
-  meter->readHallValue();
+  meter->readHallValue(); // c ним не падало
+  
   meter->display();
-  meter -> onButtonClick();
-  //Serial.println('*');
-  delay(DEF_DELAY);
+  //meter -> onButtonClick();
+  delay(0);
   if (meter->isPaused()){
     meter->addPauseTime(millis()-t);  
+  }else if (meter->isWaitInStartedMode()){
+    meter->addNoRunningTimeTime(millis()-t);
   }
+
+
+/*
+ * 340 690  352
+ */
+
+  //readHall();
   
 }
