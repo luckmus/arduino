@@ -14,6 +14,8 @@ int adc_key_in = 0;
 #define btnNONE 5
 
 #define DEF_DELAY 1
+#define USE_INTERRUPT true
+volatile int state = LOW;
 
 ////hall
 const int ledPin = 13;//the led attach to pin13
@@ -472,27 +474,30 @@ void setup() {
   pinMode(digitalPin,INPUT);//set the state of D0 as INPUT
   pinMode(ledPin,OUTPUT);//set the state of pin13 as OUTPUT
   //meter->start();
+/* на прерываниях надо все переписать
+  if (USE_INTERRUPT){
+    attachInterrupt(1, blink, CHANGE);
+  }
+*/  
 }
-
+void blink()
+{
+  state = !state;
+  Serial.println(state);
+}
 void loop() {
   unsigned long t = millis();
   
   meter->readHallValue(); // c ним не падало
   
   meter->display();
-  //meter -> onButtonClick();
+  meter -> onButtonClick();
   delay(0);
   if (meter->isPaused()){
     meter->addPauseTime(millis()-t);  
   }else if (meter->isWaitInStartedMode()){
     meter->addNoRunningTimeTime(millis()-t);
   }
-
-
-/*
- * 340 690  352
- */
-
-  //readHall();
+  //digitalWrite(pin, state); мигаем светодиодом когда срабатывает прерывание, если включено USE_INTERRUPT
   
 }
