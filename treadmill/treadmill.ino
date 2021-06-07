@@ -16,6 +16,7 @@ int adc_key_in = 0;
 #define DEF_DELAY 1
 #define USE_INTERRUPT true
 volatile int state = LOW;
+volatile byte rh;
 
 ////hall
 const int ledPin = 13;//the led attach to pin13
@@ -155,6 +156,7 @@ class Meter {
   float curTempo = 0;
   boolean halfSpin = false;
   
+  
   //время последнего измерения средней скорости
   long lastMeasTime;
   LCD *lcdOb;
@@ -166,7 +168,7 @@ class Meter {
 
   void start(){
     state = s_STARTING;
-    startTime = millis();
+    startTime = getTime();
     lastMeasTime = startTime;
     awgSpinCounter = spinCountForAWGCalc;
     spinCnt = 0;
@@ -197,7 +199,7 @@ class Meter {
     if (isPaused()){
         return;
     }
-    byte rh = readHall();
+    //byte rh = readHall();
     //lastHallVal++;
     if (rh != lastHallVal){
       lastHallVal = rh;
@@ -205,24 +207,25 @@ class Meter {
       if (halfSpin){
         spin();
       }
-    }else if (millis()-lastSpinTime>3000){
+    }else if (getTime()-lastSpinTime>3000){
       //calcSpeed();
       curSpeed = 0;
     }
     
   }
   void spin(){
-    /*
+    unsigned long milsec = getTime();
+    ///*
     Serial.print("  S P I N   ");
     Serial.print(spinCnt);
     Serial.print("   ");
-    Serial.print( milisToTimeString(millis()));
+    Serial.print( milisToTimeString(milsec));
     Serial.print("   ");
-    */
-    long st = millis()-lastSpinTime;
-    //Serial.println( st);
+    //*/
+    long st = milsec-lastSpinTime;
+    Serial.println( st);
     stack->push(st);
-    lastSpinTime = millis();
+    lastSpinTime = milsec;
     switch(state){
       case s_STARTING:
         state = s_STARTED;
@@ -271,7 +274,7 @@ String milisToTimeString(unsigned long ms) {
   
 
   void calcSpeed(){
-    unsigned long currTime = millis();
+    unsigned long currTime = getTime();
     long timeBetwSpins = currTime-lastMeasTime;
     int addSpin =0;//добавим число спинов, если был пропущенный спин, мы его вычли и получили отрицательное число/ этот спин надо учесть при рассчете текущей скорости;
     /*
@@ -337,7 +340,7 @@ String milisToTimeString(unsigned long ms) {
         break;
         case s_STARTED:
         case s_PAUSED:
-             unsigned long currTime = millis();
+             unsigned long currTime = getTime();
               if ((currTime-lastRepaint)<500 ){
                 return;
               }
@@ -401,15 +404,15 @@ String milisToTimeString(unsigned long ms) {
   }
 
   void onButtonClick() {
-
+  unsigned long milsec = getTime();
     int btn = read_LCD_buttons();
     if (btn!=btnNONE){
-      if (prevBtn == btn && (millis()-prevBtnTime)<500){
+      if (prevBtn == btn && (milsec-prevBtnTime)<500){
 
         return;  
       }
       prevBtn = btn;
-      prevBtnTime = millis();
+      prevBtnTime = milsec;
       Serial.print("button:");
       Serial.println(btn);
     }
@@ -474,19 +477,24 @@ void setup() {
   pinMode(digitalPin,INPUT);//set the state of D0 as INPUT
   pinMode(ledPin,OUTPUT);//set the state of pin13 as OUTPUT
   //meter->start();
-/* на прерываниях надо все переписать
   if (USE_INTERRUPT){
     attachInterrupt(1, blink, CHANGE);
   }
-*/  
+
 }
 void blink()
 {
   state = !state;
+  rh = state;
   Serial.println(state);
 }
+
+unsigned long getTime(){
+  //Serial.println("gt");
+  return millis();
+}
 void loop() {
-  unsigned long t = millis();
+  unsigned long t = getTime();
   
   meter->readHallValue(); // c ним не падало
   
@@ -494,9 +502,9 @@ void loop() {
   meter -> onButtonClick();
   delay(0);
   if (meter->isPaused()){
-    meter->addPauseTime(millis()-t);  
+    meter->addPauseTime(getTime()-t);  
   }else if (meter->isWaitInStartedMode()){
-    meter->addNoRunningTimeTime(millis()-t);
+    meter->addNoRunningTimeTime(getTime()-t);
   }
   //digitalWrite(pin, state); мигаем светодиодом когда срабатывает прерывание, если включено USE_INTERRUPT
   
