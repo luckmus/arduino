@@ -49,6 +49,7 @@ portMUX_TYPE timerMux = portMUX_INITIALIZER_UNLOCKED;
 
 int analogPin = A0; // for ESP8266 microcontroller
 int digitalPin = D3; // for ESP8266 microcontroller
+boolean justStarted;
 #define DHTPIN 0
 
 #ifdef ESP8266
@@ -161,7 +162,7 @@ void setup() {
   pinMode(DHTPIN, INPUT);
   
  display_update_enable(true);
-
+  justStarted = true;
 }
 
 unsigned long last_draw=0;
@@ -182,7 +183,7 @@ boolean digitalValue=0;// variable to store the value coming from pin2
 
 ////hall
 
-float spinDistance = 0.6;
+float spinDistance = 0.628;
 
 enum LCD_SHOW_MODE {
 
@@ -335,6 +336,7 @@ class Meter {
     avgTempo = 0;
     totalPauseTime=0;
     noRunningTimeTime = 0;
+    lastCicleWasNoRunning = false;
     lastSpinTime = 0;
     stack->clear();
     //Serial.println("start");
@@ -345,7 +347,19 @@ class Meter {
   }
 
   void addNoRunningTimeTime(int t){
+    if (!isStarted()){
+      Serial.println("skip add addNoRunningTimeTime, isn't started");
+      return;
+    }
+    unsigned long allTime = getTime() - startTime-totalPauseTime;
+    String str = milisToTimeString(allTime);
+              
     noRunningTimeTime += t;
+    String nrts = milisToTimeString(noRunningTimeTime);
+    Serial.print("allTime ");
+    Serial.print(str);
+    Serial.print(" nrts ");
+    Serial.println(nrts);
   }
 
   boolean isPaused(){
@@ -379,7 +393,7 @@ class Meter {
     if (isStarted() && lastCicleWasNoRunning){
       //перенести в spin
       Serial.println("goes out from no running");
-      //meter->addNoRunningTimeTime(getTime()-nrt);
+      addNoRunningTimeTime(getTime()-nrt);
       Serial.print("add no running time");
       Serial.println(getTime()-nrt);
       nrt = 0;
@@ -462,7 +476,10 @@ String milisToTimeString(unsigned long ms) {
     float dist = spinDistance*(spinCountForAWGCalc +addSpin);//
     curSpeed = dist/(timeBetwSpins/1000.0);
     float d = getDistance();
-    avgSpeed = d/((currTime - startTime - totalPauseTime-noRunningTimeTime)/1000.0);
+    unsigned long runningTime = (currTime - startTime - totalPauseTime-noRunningTimeTime);
+    Serial.print("runningTime for calc awgSpeed: ");
+    Serial.println(milisToTimeString(runningTime));
+    avgSpeed = d/(runningTime/1000.0);
     avgSpeed = (avgSpeed/1000.0)*3600.0;
     avgTempo = 60/avgSpeed;
     lastMeasTime=currTime;
@@ -556,7 +573,7 @@ unsigned long lastShow = 0;
   //display.setFont(&TomThumb);
   //display.setFont(&Org_01);
           display.setTextColor(myCYAN);
-          display.setCursor(2,0);
+          display.setCursor(2,0); 
           display.print(format("", dc, 9));
           display.setTextColor(display.color565(255,255,255));
            display.print("m");
@@ -568,8 +585,10 @@ unsigned long lastShow = 0;
           display.setCursor(2,16);
           display.print( "Pace");
           display.setTextColor(getColorForPace(curTempo));
+          if (curTempo>=100){
+            curTempoStr = "----";
+          }
           display.print( format("", curTempoStr, 6));
-          display.setTextColor(myCYAN);
           display.setTextColor(getColorForPace(avgTempo));
           display.setCursor(2,24);
           display.print(avgTempoStr);
@@ -605,7 +624,8 @@ unsigned long lastShow = 0;
   }
 
   boolean isWaitInStartedMode(){
-    return (curTempo>99) || (curSpeed == 0);
+    //return (curTempo>99) || (curSpeed == 0);
+    return isStarted() && spinCnt>2 && getTime()-lastSpinTime>2000;
   }
 
   String format(String s1, String s2, int resLen){
@@ -740,6 +760,9 @@ int analogVal = analogRead(analogPin);
   //Serial.print("\t");
   //Serial.println(digitalVal);
   //delay(100);
+  if (justStarted)  {
+    justStarted = false;
+  }
 }
 
 
