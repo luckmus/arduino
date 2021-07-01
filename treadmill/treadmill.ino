@@ -558,12 +558,16 @@ unsigned long lastShow = 0;
            }
            String avgTempoStr = String(avgTempo,1);
            if (avgTempo>99){
-            avgTempoStr="----";
+              avgTempoStr="----";
+           }else{
+              avgTempoStr = tempoToSecondsFormat(avgTempo);
            }
            String curTempoStr = String(curTempo,2);
            if (isWaitInStartedMode()){
             curTempoStr="----";
             stack->clear();
+           }else{
+            curTempoStr = tempoToSecondsFormat(curTempo);
            }
            line1=format(format(avgTempoStr, String(avgSpeed,1), 9), dc, 16);
            line2=format(curTempoStr, t, 16);
@@ -765,4 +769,23 @@ int analogVal = analogRead(analogPin);
   }
 }
 
+String tempoToSecondsFormat(float tempo) {
+        int fp = (int)  tempo;
+        int secpart =fract(tempo);
+        secpart = (60 * secpart) / 100;
+        if (secpart == 60){
+          secpart = 0;
+          fp = fp+1;
+        }
+        String res = String(fp)+"."+String((secpart<10?"0":"")+String(secpart));
+        //Serial.println(String(tempo)+"->"+res);
+        return res;
+    }
 
+int fract(float raw) {
+    int fp = (int)  raw;
+    float f = raw-fp;
+    float fr = f*100;
+    
+    return floor(fr);
+}
